@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # SNBPlugin - 弹幕插件
 **适用于 Minecraft 1.21.4 Folia 服务器的智能弹幕系统**
 
@@ -83,3 +84,7 @@ A: 确保已配置JDK21环境变量
 ## 📮 支持联系
 提交 Issue 或联系：gbovv@example.com
 
+=======
+# SNBPlugin
+ Minecraft Folia弹幕插件
+>>>>>>> f5f1cd59acdc802ed371112e6d1bf8e02f1f3a5a
