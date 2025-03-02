@@ -1,4 +1,4 @@
-# SNBPlugin - 弹幕插件
+# SNBPlugin - 智能弹幕系统
 **适用于 Minecraft 1.21.4 Folia 服务器的智能弹幕系统**
 
 ## 🚀 功能特性

@@ -4,7 +4,8 @@ plugins {
 }
 
 group = "gbovv.com"
-version = "1.0-SNAPSHOT"
+version = "1.0.0"
+description = "SNBPlugin"
 
 repositories {
     mavenCentral()
@@ -31,6 +32,13 @@ tasks {
                 "-Xnullability-annotations=@org.eclipse.jdt.annotation.NonNull"
             )
         }
+    }
+    compileJava {
+        options.encoding = "UTF-8"
+        options.release = 21
+    }
+    jar {
+        archiveFileName.set("SNBPlugin-${version}.jar")
     }
 }
 
