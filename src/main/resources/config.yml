@@ -1,0 +1,6 @@
+# 弹幕插件配置
+settings:
+  cooldown: 5 # 全局冷却时间（秒）
+  max-length: 50 # 最大消息长度
+  lines: 3 # 最大弹幕行数
+  speed: 0.8 # 弹幕移动速度（像素/tick） 
