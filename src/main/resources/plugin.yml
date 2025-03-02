@@ -1,0 +1,18 @@
+name: SNBPlugin
+main: gbovv.com.SNBPlugin
+version: 1.0
+api-version: 1.21
+folia-supported: true
+commands:
+  snb:
+    description: 发送弹幕
+  snbcooldown:
+    description: 设置冷却时间
+    permission: snb.admin
+permissions:
+  snb.admin:
+    description: 管理弹幕设置
+    default: op
+  snb.use:
+    description: 允许发送弹幕
+    default: true 
